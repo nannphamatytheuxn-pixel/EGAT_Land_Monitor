@@ -1,8 +1,5 @@
 earthengine-api
-streamlit
+geemap
 folium
 streamlit-folium
 geopandas
-fiona
-pyproj
-shapely
