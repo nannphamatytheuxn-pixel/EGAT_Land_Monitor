@@ -11,28 +11,37 @@ from streamlit_folium import st_folium
 
 PROJECT_ID = "gee-learning-personal"
 
-PROJECT_ID = "gee-learning-personal"
-
-def has_service_account_secret():
-    try:
-        return "gcp_service_account" in st.secrets
-    except Exception:
-        return False
-
 def init_earth_engine():
-    if has_service_account_secret():
-        service_account_info = dict(st.secrets["gcp_service_account"])
-        credentials = ee.ServiceAccountCredentials(
-            service_account_info["client_email"], key_data=json.dumps(service_account_info)
-        )
-        ee.Initialize(credentials, project=PROJECT_ID)
-    else:
+    try:
+        if "gcp_service_account" in st.secrets:
+            service_account_info = dict(st.secrets["gcp_service_account"])
+            credentials = ee.ServiceAccountCredentials(
+                service_account_info["client_email"],
+                key_data=json.dumps(service_account_info)
+            )
+            ee.Initialize(credentials, project=PROJECT_ID)
+        else:
+            try:
+                ee.Initialize(project=PROJECT_ID)
+            except Exception:
+                ee.Authenticate()
+                ee.Initialize(project=PROJECT_ID)
+    except Exception:
         try:
             ee.Initialize(project=PROJECT_ID)
         except Exception:
             ee.Authenticate()
             ee.Initialize(project=PROJECT_ID)
 
+init_earth_engine()
+#DEBUG - ลบออกหลัง test
+import streamlit as st
+if "gcp_service_account" in st.secrets:
+    st.success("Secrets โหลดได้แล้ว")
+else:
+    st.error("ไม่พบ secrets!")
+    st.write(list(st.secrets.keys())) # แสดง keys ที่มีอยู่
+    
 st.title("ระบบติดตามการลุกล้ำพื้นที่ การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย")
 
 st.header("กำหนดช่วงเวลาวิเคราะห์")
@@ -111,11 +120,9 @@ if run_button:
             ndvi_t1, ndbi_t1, ndwi_t1 = calc_indices(img_t1)
             ndvi_t2, ndbi_t2, ndwi_t2 = calc_indices(img_t2)
 
-            # สูตรคำนวณ Delta
-            delta_ndbi = ndbi_t2.subtract(ndbi_t1)  # T2 - T1
-            delta_ndvi = ndvi_t1.subtract(ndvi_t2)  # T1 - T2
+            delta_ndbi = ndbi_t2.subtract(ndbi_t1)
+            delta_ndvi = ndvi_t1.subtract(ndvi_t2)
 
-            # เกณฑ์จำแนก
             is_red = delta_ndbi.gt(0.05).And(ndwi_t2.lt(0.15))
             is_yellow = (
                 delta_ndvi.gt(0.03)
